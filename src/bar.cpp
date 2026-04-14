@@ -81,6 +81,11 @@ void BarComponent::setText(const std::string& text)
 	pango_layout_set_text(pangoLayout.get(), _text->c_str(), _text->size());
 }
 
+void BarComponent::setAttributes(PangoAttrList *attrs)
+{
+	pango_layout_set_attributes(pangoLayout.get(), attrs);
+}
+
 Bar::Bar()
 {
 	_pangoContext.reset(pango_font_map_create_context(pango_cairo_font_map_get_default()));
@@ -156,7 +161,16 @@ void Bar::setTitle(const std::string& title)
 }
 void Bar::setStatus(const std::string& status)
 {
-	_statusCmp.setText(status);
+	char *buf;
+	GError *error = NULL;
+	PangoAttrList *attrs;
+	if (pango_parse_markup(status.c_str(), -1, 0, &attrs, &buf, NULL, &error)) {
+		_statusCmp.setText(buf);
+		_statusCmp.setAttributes(attrs);
+	}
+	else {
+		_statusCmp.setText(error->message);
+	}
 }
 
 void Bar::invalidate()
@@ -271,7 +285,7 @@ void Bar::renderStatus()
 	cairo_fill(_painter);
 
 	_x = start;
-	setColorScheme(colorInactive, true);
+	setColorScheme(colorInactive, false);
 	if (_statusCmp.width() > 0)
 	{
 		renderComponent(_statusCmp);
